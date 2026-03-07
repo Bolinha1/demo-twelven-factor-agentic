@@ -1,5 +1,6 @@
 package com.twelvenfactoragentic.demotwelvenfactoragentic.config;
 
+import com.twelvenfactoragentic.demotwelvenfactoragentic.tools.HumanConfirmationTool;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -24,17 +25,19 @@ public class ChatClientConfig {
     /**
      * Factor 2 — Agente de extração de intenção
      * Factor 3 — Memória JDBC preserva o contexto conversacional entre turnos
+     * Factor 7 — HumanConfirmationTool registrada: escalação humana via tool call explícita
      *
      * system.prompt.st é a única fonte de verdade para interpretação de linguagem natural.
-     * Sem ferramentas: a extração é puramente declarativa via structured output.
      */
     @Bean
     @Qualifier("agentChatClient")
-    ChatClient agentChatClient(ChatClient.Builder builder, ChatMemory chatMemory) throws IOException {
+    ChatClient agentChatClient(ChatClient.Builder builder, ChatMemory chatMemory,
+                               HumanConfirmationTool humanConfirmationTool) throws IOException {
         String systemPrompt = systemPromptResource.getContentAsString(StandardCharsets.UTF_8);
         return builder
                 .defaultSystem(systemPrompt)
                 .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .defaultTools(humanConfirmationTool)
                 .build();
     }
 

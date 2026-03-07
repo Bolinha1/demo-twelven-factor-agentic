@@ -1,3 +1,5 @@
+# version: 1.0.0 | agent: confirmation | lang: pt-BR | updated: 2026-03-07
+
 Padrão de confirmação de operações de estoque:
 
 Para ENTRADA de produtos (STOCK_IN):
