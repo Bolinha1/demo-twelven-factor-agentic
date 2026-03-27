@@ -1,4 +1,4 @@
-package com.twelvenfactoragentic.demo_twelven_factor_agentic;
+package com.twelvenfactoragentic.demotwelvenfactoragentic;
 
 import com.twelvenfactoragentic.demotwelvenfactoragentic.repository.ProductRepository;
 import com.twelvenfactoragentic.demotwelvenfactoragentic.service.InventoryService;
@@ -28,15 +28,6 @@ public class Factor1_ToolsCalling {
     @Autowired
     ProductRepository productRepository;
 
-    /**
-     * Factor 4 — O LLM decide qual tool chamar a partir de linguagem natural.
-     *
-     * O ChatClient recebe os métodos @Tool via .tools(inventoryTools).
-     * Ao processar a mensagem do usuário, o modelo identifica que deve
-     * executar stockIn e passa os argumentos corretos (productId, quantity).
-     *
-     *   mensagem natural  →  LLM escolhe @Tool stockIn  →  InventoryService.stockIn()  →  banco
-     */
     @Test
     void llm_chama_tool_stock_in_via_linguagem_natural() {
         productRepository.deleteById("tenis");
@@ -56,15 +47,6 @@ public class Factor1_ToolsCalling {
         assertThat(quantidade).isEqualTo(5);
     }
 
-    /**
-     * Factor 4 — O LLM aciona stockOut a partir de linguagem natural.
-     *
-     * O estoque inicial é preparado diretamente via InventoryService (sem LLM),
-     * simulando o estado real do banco antes da operação de saída.
-     * O modelo então interpreta a mensagem e chama stockOut com os argumentos corretos.
-     *
-     *   mensagem natural  →  LLM escolhe @Tool stockOut  →  InventoryService.stockOut()  →  banco
-     */
     @Test
     void llm_chama_tool_stock_out_via_linguagem_natural() {
         productRepository.deleteById("camiseta");
