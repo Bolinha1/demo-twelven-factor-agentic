@@ -1,4 +1,4 @@
-package com.twelvenfactoragentic.demotwelvenfactoragentic.resources;
+package com.twelvenfactoragentic.demo_twelven_factor_agentic;
 
 import com.twelvenfactoragentic.demotwelvenfactoragentic.repository.ProductRepository;
 import com.twelvenfactoragentic.demotwelvenfactoragentic.service.InventoryService;
