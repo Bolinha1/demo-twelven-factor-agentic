@@ -4,6 +4,8 @@ import com.twelvenfactoragentic.demotwelvenfactoragentic.model.Product;
 import com.twelvenfactoragentic.demotwelvenfactoragentic.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class InventoryService {
 
@@ -13,10 +15,7 @@ public class InventoryService {
         this.repository = repository;
     }
 
-    /**
-     * Factor 5
-     * Estado de negócio fora do agente
-     */
+
     public void stockIn(String productId, int quantity) {
 
         Product product = repository
@@ -26,6 +25,10 @@ public class InventoryService {
         product.setQuantity(product.getQuantity()+quantity);
 
         repository.save(product);
+    }
+
+    public List<Product> listProducts() {
+        return repository.findAll();
     }
 
     public void stockOut(String productId, int quantity) {

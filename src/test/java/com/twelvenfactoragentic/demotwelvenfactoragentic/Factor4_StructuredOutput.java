@@ -1,7 +1,8 @@
 package com.twelvenfactoragentic.demotwelvenfactoragentic;
 
-import com.twelvenfactoragentic.demotwelvenfactoragentic.model.ActionType;
 import com.twelvenfactoragentic.demotwelvenfactoragentic.model.InventoryCommand;
+import com.twelvenfactoragentic.demotwelvenfactoragentic.model.StockInCommand;
+import com.twelvenfactoragentic.demotwelvenfactoragentic.model.StockOutCommand;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
@@ -35,13 +36,10 @@ public class Factor4_StructuredOutput {
                 .call()
                 .entity(InventoryCommand.class);
 
-        assertThat(command)
-                .isNotNull()
-                .satisfies(cmd -> {
-                    assertThat(cmd.action()).isEqualTo(ActionType.STOCK_IN);
-                    assertThat(cmd.productId()).isEqualTo("camiseta");
-                    assertThat(cmd.quantity()).isEqualTo(10);
-                });
+        assertThat(command).isInstanceOf(StockInCommand.class);
+        StockInCommand stockIn = (StockInCommand) command;
+        assertThat(stockIn.productId()).isEqualTo("camiseta");
+        assertThat(stockIn.quantity()).isEqualTo(10);
     }
 
     @Test
@@ -57,13 +55,10 @@ public class Factor4_StructuredOutput {
                 .call()
                 .entity(InventoryCommand.class);
 
-        assertThat(command)
-                .isNotNull()
-                .satisfies(cmd -> {
-                    assertThat(cmd.action()).isEqualTo(ActionType.STOCK_OUT);
-                    assertThat(cmd.productId()).isEqualTo("tenis");
-                    assertThat(cmd.quantity()).isEqualTo(3);
-                });
+        assertThat(command).isInstanceOf(StockOutCommand.class);
+        StockOutCommand stockOut = (StockOutCommand) command;
+        assertThat(stockOut.productId()).isEqualTo("tenis");
+        assertThat(stockOut.quantity()).isEqualTo(3);
     }
 
     @Test
@@ -79,12 +74,9 @@ public class Factor4_StructuredOutput {
                 .call()
                 .entity(InventoryCommand.class);
 
-        assertThat(command)
-                .isNotNull()
-                .satisfies(cmd -> {
-                    assertThat(cmd.action()).isNotNull();
-                    assertThat(cmd.productId()).isNotBlank();
-                    assertThat(cmd.quantity()).isGreaterThan(0);
-                });
+        assertThat(command).isInstanceOf(StockOutCommand.class);
+        StockOutCommand stockOut = (StockOutCommand) command;
+        assertThat(stockOut.productId()).isNotBlank();
+        assertThat(stockOut.quantity()).isGreaterThan(0);
     }
 }

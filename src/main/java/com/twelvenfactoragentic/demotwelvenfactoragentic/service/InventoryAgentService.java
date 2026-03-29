@@ -1,7 +1,10 @@
 package com.twelvenfactoragentic.demotwelvenfactoragentic.service;
 
-import com.twelvenfactoragentic.demotwelvenfactoragentic.model.ActionType;
 import com.twelvenfactoragentic.demotwelvenfactoragentic.model.InventoryCommand;
+import com.twelvenfactoragentic.demotwelvenfactoragentic.model.StockGetCommand;
+import com.twelvenfactoragentic.demotwelvenfactoragentic.model.StockInCommand;
+import com.twelvenfactoragentic.demotwelvenfactoragentic.model.StockOutCommand;
+import com.twelvenfactoragentic.demotwelvenfactoragentic.model.UnknownCommand;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -18,10 +21,6 @@ public class InventoryAgentService {
     private final ChatClient confirmationChatClient;
     private final InventoryService inventoryService;
 
-    /**
-     * Factor 3 — Estado de confirmacao pendente controlado explicitamente na JVM,
-     * fora do LLM. Cada conversationId mantem sua propria operacao pendente.
-     */
     private final Map<String, InventoryCommand> pendingCommands = new ConcurrentHashMap<>();
 
     public InventoryAgentService(
@@ -33,13 +32,6 @@ public class InventoryAgentService {
         this.inventoryService = inventoryService;
     }
 
-    /**
-     * Factor 1 — Linguagem natural -> pipeline estruturado de dois estagios.
-     *
-     * Fluxo:
-     * 1. Se ha comando pendente para este conversationId: trata como resposta de confirmacao.
-     * 2. Se nao ha: extrai intencao estruturada -> guarda pendente -> retorna pergunta de confirmacao.
-     */
     public String process(String message, String conversationId) {
         InventoryCommand pending = pendingCommands.get(conversationId);
 
@@ -50,8 +42,6 @@ public class InventoryAgentService {
         return handleNewIntent(message, conversationId);
     }
 
-    // --- Fase 1: agentChatClient extrai a intencao como InventoryCommand ---
-
     private String handleNewIntent(String message, String conversationId) {
         InventoryCommand command = agentChatClient.prompt()
                 .user(message)
@@ -59,33 +49,33 @@ public class InventoryAgentService {
                 .call()
                 .entity(InventoryCommand.class);
 
-        if (command == null || command.productId() == null || command.action() == null || command.quantity() <= 0) {
+        if (command == null) {
             return "Nao foi possivel identificar uma operacao de estoque valida. " +
                    "Por favor, informe o produto, a quantidade e a operacao desejada.";
         }
 
-        pendingCommands.put(conversationId, command);
-
-        return askConfirmation(command);
+        return switch (command) {
+            case UnknownCommand c  ->
+                    "Nao foi possivel identificar uma operacao de estoque valida. " +
+                    "Por favor, informe o produto, a quantidade e a operacao desejada.";
+            case StockGetCommand c -> executeCommand(c);
+            case StockInCommand c  -> { pendingCommands.put(conversationId, c); yield askConfirmation(c); }
+            case StockOutCommand c -> { pendingCommands.put(conversationId, c); yield askConfirmation(c); }
+        };
     }
 
-    // --- Fase 2: confirmationChatClient formata a pergunta por tipo de operacao ---
-
     private String askConfirmation(InventoryCommand command) {
-        String input = String.format(
-                "Operacao: %s | Produto: %s | Quantidade: %d",
-                command.action().name(),
-                command.productId(),
-                command.quantity()
-        );
+        String input = switch (command) {
+            case StockInCommand c  -> String.format("Operacao: STOCK_IN | Produto: %s | Quantidade: %d", c.productId(), c.quantity());
+            case StockOutCommand c -> String.format("Operacao: STOCK_OUT | Produto: %s | Quantidade: %d", c.productId(), c.quantity());
+            default -> throw new IllegalStateException("Confirmacao nao aplicavel para: " + command);
+        };
 
         return confirmationChatClient.prompt()
                 .user(input)
                 .call()
                 .content();
     }
-
-    // --- Tratamento da resposta de confirmacao ---
 
     private String handleConfirmation(String message, String conversationId, InventoryCommand pending) {
         if (isAffirmative(message)) {
@@ -100,25 +90,25 @@ public class InventoryAgentService {
         }
     }
 
-    // --- Factor 4 + Factor 5: execucao direta no servico de negocio, sem LLM ---
-
     private String executeCommand(InventoryCommand command) {
         try {
-            if (command.action() == ActionType.STOCK_IN) {
-                inventoryService.stockIn(command.productId(), command.quantity());
-                return String.format("Entrada de %d unidades do produto '%s' registrada com sucesso.",
-                        command.quantity(), command.productId());
-            } else {
-                inventoryService.stockOut(command.productId(), command.quantity());
-                return String.format("Saida de %d unidades do produto '%s' registrada com sucesso.",
-                        command.quantity(), command.productId());
-            }
+            return switch (command) {
+                case StockInCommand c -> {
+                    inventoryService.stockIn(c.productId(), c.quantity());
+                    yield String.format("Entrada de %d unidades do produto '%s' registrada com sucesso.", c.quantity(), c.productId());
+                }
+                case StockOutCommand c -> {
+                    inventoryService.stockOut(c.productId(), c.quantity());
+                    yield String.format("Saida de %d unidades do produto '%s' registrada com sucesso.", c.quantity(), c.productId());
+                }
+                case StockGetCommand c -> inventoryService.listProducts().toString();
+                case UnknownCommand c  -> "Nao foi possivel identificar uma operacao de estoque valida.";
+                case null -> "Nao foi possivel identificar uma operacao de estoque valida.";
+            };
         } catch (Exception e) {
             return String.format("Erro ao executar a operacao: %s", e.getMessage());
         }
     }
-
-    // --- Deteccao deterministica de confirmacao, sem round-trip ao LLM ---
 
     private boolean isAffirmative(String message) {
         if (message == null) return false;
