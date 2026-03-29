@@ -1,0 +1,15 @@
+-- Cria o banco de dados isolado para testes
+CREATE DATABASE chatmemory_test OWNER chatuser;
+
+-- Conecta ao banco de testes e cria o schema do Spring AI Chat Memory
+\c chatmemory_test
+
+CREATE TABLE IF NOT EXISTS spring_ai_chat_memory (
+    conversation_id VARCHAR(256) NOT NULL,
+    content         TEXT        NOT NULL,
+    type            VARCHAR(100) NOT NULL,
+    "timestamp"     TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS spring_ai_chat_memory_conversation_id_timestamp_idx
+    ON spring_ai_chat_memory (conversation_id, "timestamp");
